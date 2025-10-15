@@ -313,7 +313,7 @@ func (cs *checkout) PlaceOrder(ctx context.Context, req *pb.PlaceOrderRequest) (
 
 	prep, err := cs.prepareOrderItemsAndShippingQuoteFromCart(ctx, req.UserId, req.UserCurrency, req.Address)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, err.Error())
+		return nil, status.Errorf(codes.Internal, "failed to prepare order: %v", err)
 	}
 	span.AddEvent("prepared")
 
@@ -385,7 +385,26 @@ func (cs *checkout) PlaceOrder(ctx context.Context, req *pb.PlaceOrderRequest) (
 	// send to kafka only if kafka broker address is set
 	if cs.kafkaBrokerSvcAddr != "" {
 		logger.Info("sending to postProcessor")
-		cs.sendToPostProcessor(ctx, orderResult)
+
+		// Check producerConsumerMismatch feature flag
+		if cs.isFeatureFlagEnabled(ctx, "producerConsumerMismatch") {
+			logger.Info("producerConsumerMismatch feature flag enabled - setting ShippingCost.CurrencyCode to empty string")
+			// Create a copy of the orderResult to avoid modifying the original
+			kafkaOrderResult := &pb.OrderResult{
+				OrderId:            orderResult.OrderId,
+				ShippingTrackingId: orderResult.ShippingTrackingId,
+				ShippingCost: &pb.Money{
+					CurrencyCode: "", // Set to empty string to simulate null
+					Units:        orderResult.ShippingCost.Units,
+					Nanos:        orderResult.ShippingCost.Nanos,
+				},
+				ShippingAddress: orderResult.ShippingAddress,
+				Items:           orderResult.Items,
+			}
+			cs.sendToPostProcessor(ctx, kafkaOrderResult)
+		} else {
+			cs.sendToPostProcessor(ctx, orderResult)
+		}
 	}
 
 	resp := &pb.PlaceOrderResponse{Order: orderResult}
