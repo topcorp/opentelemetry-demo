@@ -118,15 +118,6 @@
         "off": false,
         "on": true
       }
-    },
-    "producerConsumerMismatch": {
-      "defaultVariant": "off",
-      "description": "Simulates data quality issues by setting ShippingCostCurrencyCode to null in producer messages, causing consumer processing failures",
-      "state": "ENABLED",
-      "variants": {
-        "off": false,
-        "on": true
-      }
     }
   }
 }

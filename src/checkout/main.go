@@ -386,25 +386,21 @@ func (cs *checkout) PlaceOrder(ctx context.Context, req *pb.PlaceOrderRequest) (
 	if cs.kafkaBrokerSvcAddr != "" {
 		logger.Info("sending to postProcessor")
 
-		// Check producerConsumerMismatch feature flag
-		if cs.isFeatureFlagEnabled(ctx, "producerConsumerMismatch") {
-			logger.Info("producerConsumerMismatch feature flag enabled - setting ShippingCost.CurrencyCode to empty string")
-			// Create a copy of the orderResult to avoid modifying the original
-			kafkaOrderResult := &pb.OrderResult{
-				OrderId:            orderResult.OrderId,
-				ShippingTrackingId: orderResult.ShippingTrackingId,
-				ShippingCost: &pb.Money{
-					CurrencyCode: "", // Set to empty string to simulate null
-					Units:        orderResult.ShippingCost.Units,
-					Nanos:        orderResult.ShippingCost.Nanos,
-				},
-				ShippingAddress: orderResult.ShippingAddress,
-				Items:           orderResult.Items,
-			}
-			cs.sendToPostProcessor(ctx, kafkaOrderResult)
-		} else {
-			cs.sendToPostProcessor(ctx, orderResult)
+		// Always set ShippingCost.CurrencyCode to empty string to simulate data quality issues
+		// logger.Info("setting ShippingCost.CurrencyCode to empty string for producer-consumer mismatch simulation")
+		// Create a copy of the orderResult to avoid modifying the original
+		kafkaOrderResult := &pb.OrderResult{
+			OrderId:            orderResult.OrderId,
+			ShippingTrackingId: orderResult.ShippingTrackingId,
+			ShippingCost: &pb.Money{
+				CurrencyCode: "", // Set to empty string to simulate null
+				Units:        orderResult.ShippingCost.Units,
+				Nanos:        orderResult.ShippingCost.Nanos,
+			},
+			ShippingAddress: orderResult.ShippingAddress,
+			Items:           orderResult.Items,
 		}
+		cs.sendToPostProcessor(ctx, kafkaOrderResult)
 	}
 
 	resp := &pb.PlaceOrderResponse{Order: orderResult}
